@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full w-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0a0f12">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>3D Android Touch Tic-Tac-Toe</title>
+    <!-- ONLY PERMITTED EXTERNAL CDN: Three.js -->
+    <script src="three.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0a0f12;
+            --panel-bg: rgba(15, 23, 28, 0.92);
+            --panel-border: rgba(61, 220, 132, 0.35);
+            --text-main: #ffffff;
+            --text-sub: #94a3b8;
+            --android-green: #3DDC84;
+            --android-neon: #a4c639;
+            --red-p1: #ff2a5f;
+            --blue-p2: #00d2ff;
+            --button-bg: rgba(255, 255, 255, 0.08);
+            --button-active: rgba(61, 220, 132, 0.25);
+            --shadow-glow: 0 0 20px rgba(61, 220, 132, 0.3);
+        }
+
+        .light-mode {
+            --bg-color: #f0f4f8;
+            --panel-bg: rgba(255, 255, 255, 0.95);
+            --panel-border: rgba(61, 220, 132, 0.6);
+            --text-main: #0f172a;
+            --text-sub: #475569;
+            --button-bg: rgba(0, 0, 0, 0.06);
+            --button-active: rgba(61, 220, 132, 0.35);
+            --shadow-glow: 0 4px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none !important;
+            -webkit-user-select: none !important;
+            touch-action: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 12px;
+        }
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        .glass-card {
+            background: var(--panel-bg);
+            border: 1.5px solid var(--panel-border);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-radius: 16px;
+            box-shadow: var(--shadow-glow);
+            padding: 12px 14px;
+            transition: all 0.3s ease;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .brand-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-icon {
+            width: 28px;
+            height: 28px;
+            fill: var(--android-green);
+            filter: drop-shadow(0 0 6px var(--android-green));
+        }
+
+        .touch-btn {
+            min-height: 44px;
+            min-width: 44px;
+            padding: 6px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--panel-border);
+            background: var(--button-bg);
+            color: var(--text-main);
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.2s ease, border-color 0.2s ease, opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .touch-btn:active {
+            transform: scale(0.94);
+            background: var(--button-active);
+        }
+
+        .touch-btn.active {
+            border-color: var(--android-green);
+            background: var(--button-active);
+            box-shadow: 0 0 8px rgba(61, 220, 132, 0.4);
+        }
+
+        .scoreboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            background: rgba(0,0,0,0.15);
+            padding: 6px 12px;
+            border-radius: 12px;
+        }
+
+        .score-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .score-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--text-sub);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .score-val {
+            font-size: 18px;
+            font-weight: 900;
+            margin-top: 1px;
+        }
+
+        .bottom-drawer {
+            width: 100%;
+            max-width: 480px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .setting-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-group .touch-btn {
+            flex: 1;
+            min-height: 38px;
+            padding: 4px 8px;
+        }
+
+        .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .svg-icon {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        #resultModal {
+            display: flex;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 15, 18, 0.25);
+            z-index: 1000;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 16px;
+            padding-bottom: 24px;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+        }
+
+        #resultModal.visible {
+            opacity: 1;
+            visibility: visible;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            transform: translateY(30px);
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #resultModal.visible .modal-card {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 900;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .modal-sub {
+            font-size: 12px;
+            color: var(--text-sub);
+            margin-bottom: 12px;
+        }
+
+        .touch-ripple {
+            position: absolute;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(61, 220, 132, 0.6);
+            pointer-events: none;
+            transform: translate(-50%, -50%) scale(0.5);
+            animation: rippleAnim 0.35s ease-out forwards;
+            z-index: 2000;
+        }
+
+        @keyframes rippleAnim {
+            to {
+                transform: translate(-50%, -50%) scale(1.8);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D WebGL Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- Touch Screen UI Overlay -->
+    <div id="ui-layer">
+        
+        <!-- TOP CONTROL BAR WITH INTEGRATED SCOREBOARD -->
+        <div class="top-bar glass-card interactive">
+            <div class="brand-title">
+                <svg class="brand-icon" viewBox="0 0 24 24">
+                    <path d="M6,18A1,1 0 0,1 5,17V11A1,1 0 0,1 6,10A1,1 0 0,1 7,11V17A1,1 0 0,1 6,18M18,18A1,1 0 0,1 17,17V11A1,1 0 0,1 18,10A1,1 0 0,1 19,11V17A1,1 0 0,1 18,18M15.5,5.5L17,3.5A0.5,0.5 0 0,0 16.2,2.9L14.6,5C13.8,4.7 12.9,4.5 12,4.5C11.1,4.5 10.2,4.7 9.4,5L7.8,2.9A0.5,0.5 0 0,0 7,3.5L8.5,5.5C5.8,6.8 4,9.5 4,12.5H20C20,9.5 18.2,6.8 15.5,5.5M10,9A0.8,0.8 0 0,1 9.2,8.2A0.8,0.8 0 0,1 10,7.4A0.8,0.8 0 0,1 10.8,8.2A0.8,0.8 0 0,1 10,9M14,9A0.8,0.8 0 0,1 13.2,8.2A0.8,0.8 0 0,1 14,7.4A0.8,0.8 0 0,1 14.8,8.2A0.8,0.8 0 0,1 14,9Z"/>
+                </svg>
+            </div>
+
+            <div class="scoreboard">
+                <div class="score-box">
+                    <span class="score-label" id="p1-score-label" style="color: var(--red-p1);">P1</span>
+                    <span id="p1-score" class="score-val">0</span>
+                </div>
+                <div class="score-box">
+                    <span class="score-label" id="p2-score-label" style="color: var(--blue-p2);">CPU</span>
+                    <span id="p2-score" class="score-val">0</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 6px;">
+                <button id="orbit-toggle-btn" class="touch-btn active">
+                    <span>ORBIT</span>
+                </button>
+
+                <button id="mode-toggle-btn" class="touch-btn">
+                    <span id="mode-text">VS AI</span>
+                </button>
+
+                <button id="theme-btn" class="touch-btn" aria-label="Toggle Theme">
+                    <svg id="theme-icon" class="svg-icon" viewBox="0 0 24 24">
+                        <path d="M12,18C11.11,18 10.26,17.8 9.5,17.45C11.56,16.5 13,14.42 13,12C13,9.58 11.56,7.5 9.5,6.55C10.26,6.2 11.11,6 12,6A6,6 0 0,1 18,12A6,6 0 0,1 12,18M20,8.69V4H15.31L12,0.69L8.69,4H4V8.69L0.69,12L4,15.31V20H8.69L12,23.31L15.31,20H20V15.31L23.31,12L20,8.69Z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- BOTTOM DRAWER WITH COLOR AND X/O SELECTION HUD -->
+        <div class="bottom-drawer glass-card interactive">
+            <div class="setting-row">
+                <span class="setting-title">P1 Symbol</span>
+                <div class="btn-group" style="width: 140px;">
+                    <button id="sym-x-btn" class="touch-btn active">X</button>
+                    <button id="sym-o-btn" class="touch-btn">O</button>
+                </div>
+            </div>
+
+            <div class="setting-row">
+                <span class="setting-title">P1 Color</span>
+                <div class="btn-group" style="width: 180px;">
+                    <button id="col-red-btn" class="touch-btn active">
+                        <span class="color-dot" style="background: var(--red-p1);"></span> RED
+                    </button>
+                    <button id="col-blue-btn" class="touch-btn">
+                        <span class="color-dot" style="background: var(--blue-p2);"></span> BLUE
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RESULT / WIN / DRAW OVERLAY MODAL DOCKED AT BOTTOM -->
+    <div id="resultModal">
+        <div class="modal-card glass-card">
+            <div id="modal-title" class="modal-title" style="color: var(--android-green);">VICTORY!</div>
+            <div id="modal-sub" class="modal-sub">Player 1 took the match.</div>
+            <button id="modal-play-again-btn" class="touch-btn active" style="width: 100%; min-height: 48px; font-size: 13px;">
+                PLAY AGAIN
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function triggerHaptic(duration = 25) {
+            if ('vibrate' in navigator) {
+                try { navigator.vibrate(duration); } catch (e) {}
+            }
+        }
+
+        const gameState = {
+            isOrbiting: true,
+            isMultiplayer: false,
+            isDarkMode: true,
+            p1Symbol: 'X',
+            p1Color: 'red',
+            p2Symbol: 'O',
+            p2Color: 'blue',
+            p1Wins: 0,
+            p2Wins: 0,
+            board: Array(9).fill(null),
+            currentTurn: 'P1',
+            isGameOver: false
+        };
+
+        const COLOR_HEX = {
+            red: 0xff2a5f,
+            blue: 0x00d2ff,
+            green: 0x3DDC84,
+            neon: 0xa4c639,
+            darkBg: 0x0a0f12,
+            lightBg: 0xf0f4f8,
+            darkTile: 0x182228,
+            lightTile: 0xdbeafe
+        };
+
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(COLOR_HEX.darkBg);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        dirLight.position.set(6, 16, 8);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        const pointLight = new THREE.PointLight(COLOR_HEX.green, 1.5, 18);
+        pointLight.position.set(0, 4, 0);
+        scene.add(pointLight);
+
+        const boardGroup = new THREE.Group();
+        scene.add(boardGroup);
+
+        const cellMeshes = [];
+        const pieceGroup = new THREE.Group();
+        boardGroup.add(pieceGroup);
+
+        const baseGeo = new THREE.BoxGeometry(6.6, 0.4, 6.6);
+        const baseMat = new THREE.MeshStandardMaterial({
+            color: 0x111820,
+            roughness: 0.3,
+            metalness: 0.7
+        });
+        const boardBase = new THREE.Mesh(baseGeo, baseMat);
+        boardBase.position.y = -0.2;
+        boardBase.receiveShadow = true;
+        boardGroup.add(boardBase);
+
+        const frameGeo = new THREE.BoxGeometry(6.8, 0.1, 6.8);
+        const frameMat = new THREE.MeshStandardMaterial({
+            color: COLOR_HEX.green,
+            emissive: COLOR_HEX.green,
+            emissiveIntensity: 0.4
+        });
+        const frameMesh = new THREE.Mesh(frameGeo, frameMat);
+        frameMesh.position.y = -0.42;
+        boardGroup.add(frameMesh);
+
+        const cellSize = 1.9;
+        const cellGap = 0.2;
+        const offset = (cellSize + cellGap);
+
+        for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 3; col++) {
+                const idx = row * 3 + col;
+                const cellGeo = new THREE.BoxGeometry(cellSize, 0.18, cellSize);
+                const cellMat = new THREE.MeshStandardMaterial({
+                    color: COLOR_HEX.darkTile,
+                    roughness: 0.4,
+                    metalness: 0.3
+                });
+                const cell = new THREE.Mesh(cellGeo, cellMat);
+                cell.position.set((col - 1) * offset, 0, (row - 1) * offset);
+                cell.receiveShadow = true;
+                cell.userData = { index: idx };
+
+                boardGroup.add(cell);
+                cellMeshes.push(cell);
+            }
+        }
+
+        function create3DAndroidRobot() {
+            const botGroup = new THREE.Group();
+
+            const botMat = new THREE.MeshStandardMaterial({
+                color: COLOR_HEX.green,
+                emissive: COLOR_HEX.green,
+                emissiveIntensity: 0.35,
+                roughness: 0.2,
+                metalness: 0.4
+            });
+
+            const headGeo = new THREE.SphereGeometry(0.5, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const head = new THREE.Mesh(headGeo, botMat);
+
+            const eyeGeo = new THREE.SphereGeometry(0.045, 12, 12);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x0a0f12 });
+
+            const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeL.position.set(-0.18, 0.22, 0.42);
+
+            const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+            eyeR.position.set(0.18, 0.22, 0.42);
+
+            const antGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.25, 8);
+            antGeo.translate(0, 0.125, 0);
+
+            const antL = new THREE.Mesh(antGeo, botMat);
+            antL.position.set(-0.2, 0.42, 0.05);
+            antL.rotation.z = Math.PI / 6;
+            antL.rotation.x = -Math.PI / 12;
+
+            const antR = new THREE.Mesh(antGeo, botMat);
+            antR.position.set(0.2, 0.42, 0.05);
+            antR.rotation.z = -Math.PI / 6;
+            antR.rotation.x = -Math.PI / 12;
+
+            botGroup.add(head, eyeL, eyeR, antL, antR);
+            botGroup.position.set(0, 0.09, 0);
+            return botGroup;
+        }
+
+        const androidMascot = create3DAndroidRobot();
+        boardGroup.add(androidMascot);
+
+        function create3DXPiece(colorHex) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({
+                color: colorHex,
+                emissive: colorHex,
+                emissiveIntensity: 0.5,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+
+            const barGeo = new THREE.BoxGeometry(1.35, 0.28, 0.3);
+            const bar1 = new THREE.Mesh(barGeo, mat);
+            bar1.rotation.y = Math.PI / 4;
+            bar1.castShadow = true;
+
+            const bar2 = new THREE.Mesh(barGeo, mat);
+            bar2.rotation.y = -Math.PI / 4;
+            bar2.castShadow = true;
+
+            group.add(bar1, bar2);
+            group.position.y = 0.2;
+            return group;
+        }
+
+        function create3DOPiece(colorHex) {
+            const group = new THREE.Group();
+            const mat = new THREE.MeshStandardMaterial({
+                color: colorHex,
+                emissive: colorHex,
+                emissiveIntensity: 0.5,
+                roughness: 0.2,
+                metalness: 0.8
+            });
+
+            const torusGeo = new THREE.TorusGeometry(0.52, 0.14, 16, 32);
+            const torus = new THREE.Mesh(torusGeo, mat);
+            torus.rotation.x = Math.PI / 2;
+            torus.castShadow = true;
+
+            group.add(torus);
+            group.position.y = 0.2;
+            return group;
+        }
+
+        let winLineMesh = null;
+        function draw3DWinLine(combo) {
+            if (!combo) return;
+            const startCell = cellMeshes[combo[0]];
+            const endCell = cellMeshes[combo[2]];
+
+            const pStart = startCell.position;
+            const pEnd = endCell.position;
+
+            const distance = pStart.distanceTo(pEnd);
+            const lineGeo = new THREE.CylinderGeometry(0.08, 0.08, distance, 16);
+            const lineMat = new THREE.MeshStandardMaterial({
+                color: COLOR_HEX.neon,
+                emissive: COLOR_HEX.neon,
+                emissiveIntensity: 0.9
+            });
+
+            winLineMesh = new THREE.Mesh(lineGeo, lineMat);
+            winLineMesh.position.set(
+                (pStart.x + pEnd.x) / 2,
+                0.4,
+                (pStart.z + pEnd.z) / 2
+            );
+
+            const axis = new THREE.Vector3(0, 1, 0);
+            const dir = new THREE.Vector3().subVectors(pEnd, pStart).normalize();
+            winLineMesh.quaternion.setFromUnitVectors(axis, dir);
+
+            boardGroup.add(winLineMesh);
+        }
+
+        const orbitToggleBtn = document.getElementById('orbit-toggle-btn');
+        const modeToggleBtn = document.getElementById('mode-toggle-btn');
+        const modeText = document.getElementById('mode-text');
+        const themeBtn = document.getElementById('theme-btn');
+        const p1ScoreLabel = document.getElementById('p1-score-label');
+        const p2ScoreLabel = document.getElementById('p2-score-label');
+        const p1ScoreEl = document.getElementById('p1-score');
+        const p2ScoreEl = document.getElementById('p2-score');
+
+        const symXBtn = document.getElementById('sym-x-btn');
+        const symOBtn = document.getElementById('sym-o-btn');
+        const colRedBtn = document.getElementById('col-red-btn');
+        const colBlueBtn = document.getElementById('col-blue-btn');
+
+        const resultModal = document.getElementById('resultModal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalSub = document.getElementById('modal-sub');
+        const modalPlayAgainBtn = document.getElementById('modal-play-again-btn');
+
+        function hideResultModal() {
+            resultModal.classList.remove('visible');
+        }
+
+        function showResultModal(title, sub, colorVar) {
+            modalTitle.textContent = title;
+            modalTitle.style.color = colorVar;
+            modalSub.textContent = sub;
+            resultModal.classList.add('visible');
+        }
+
+        orbitToggleBtn.addEventListener('click', () => {
+            triggerHaptic(20);
+            gameState.isOrbiting = !gameState.isOrbiting;
+            if (gameState.isOrbiting) {
+                orbitToggleBtn.classList.add('active');
+            } else {
+                orbitToggleBtn.classList.remove('active');
+            }
+        });
+
+        modeToggleBtn.addEventListener('click', () => {
+            triggerHaptic(30);
+            gameState.isMultiplayer = !gameState.isMultiplayer;
+            if (gameState.isMultiplayer) {
+                modeText.textContent = "2 PLAYERS";
+                modeToggleBtn.classList.add('active');
+                p2ScoreLabel.textContent = "P2";
+            } else {
+                modeText.textContent = "VS AI";
+                modeToggleBtn.classList.remove('active');
+                p2ScoreLabel.textContent = "CPU";
+            }
+            resetMatch();
+        });
+
+        themeBtn.addEventListener('click', () => {
+            triggerHaptic(20);
+            gameState.isDarkMode = !gameState.isDarkMode;
+            if (gameState.isDarkMode) {
+                document.body.classList.remove('light-mode');
+                scene.background.setHex(COLOR_HEX.darkBg);
+                baseMat.color.setHex(0x111820);
+                cellMeshes.forEach(cell => cell.material.color.setHex(COLOR_HEX.darkTile));
+            } else {
+                document.body.classList.add('light-mode');
+                scene.background.setHex(COLOR_HEX.lightBg);
+                baseMat.color.setHex(0xe2e8f0);
+                cellMeshes.forEach(cell => cell.material.color.setHex(COLOR_HEX.lightTile));
+            }
+        });
+
+        symXBtn.addEventListener('click', () => {
+            triggerHaptic(15);
+            if (gameState.p1Symbol === 'X') return;
+            gameState.p1Symbol = 'X';
+            gameState.p2Symbol = 'O';
+            symXBtn.classList.add('active');
+            symOBtn.classList.remove('active');
+            resetMatch();
+        });
+
+        symOBtn.addEventListener('click', () => {
+            triggerHaptic(15);
+            if (gameState.p1Symbol === 'O') return;
+            gameState.p1Symbol = 'O';
+            gameState.p2Symbol = 'X';
+            symOBtn.classList.add('active');
+            symXBtn.classList.remove('active');
+            resetMatch();
+        });
+
+        colRedBtn.addEventListener('click', () => {
+            triggerHaptic(15);
+            if (gameState.p1Color === 'red') return;
+            gameState.p1Color = 'red';
+            gameState.p2Color = 'blue';
+            colRedBtn.classList.add('active');
+            colBlueBtn.classList.remove('active');
+            p1ScoreLabel.style.color = 'var(--red-p1)';
+            p2ScoreLabel.style.color = 'var(--blue-p2)';
+            resetMatch();
+        });
+
+        colBlueBtn.addEventListener('click', () => {
+            triggerHaptic(15);
+            if (gameState.p1Color === 'blue') return;
+            gameState.p1Color = 'blue';
+            gameState.p2Color = 'red';
+            colBlueBtn.classList.add('active');
+            colRedBtn.classList.remove('active');
+            p1ScoreLabel.style.color = 'var(--blue-p2)';
+            p2ScoreLabel.style.color = 'var(--red-p1)';
+            resetMatch();
+        });
+
+        modalPlayAgainBtn.addEventListener('click', () => {
+            triggerHaptic([20, 30, 20]);
+            resetMatch();
+        });
+
+        const WINNING_COMBOS = [
+            [0,1,2], [3,4,5], [6,7,8],
+            [0,3,6], [1,4,7], [2,5,8],
+            [0,4,8], [2,4,6]
+        ];
+
+        function checkWin(board) {
+            for (let combo of WINNING_COMBOS) {
+                const [a, b, c] = combo;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return { winner: board[a], combo };
+                }
+            }
+            if (board.every(cell => cell !== null)) {
+                return { winner: 'DRAW', combo: null };
+            }
+            return null;
+        }
+
+        function handleTileTouch(idx) {
+            if (gameState.board[idx] !== null || gameState.isGameOver) return;
+
+            triggerHaptic(30);
+
+            const activePlayer = gameState.currentTurn;
+            const symbol = activePlayer === 'P1' ? gameState.p1Symbol : gameState.p2Symbol;
+            const colorKey = activePlayer === 'P1' ? gameState.p1Color : gameState.p2Color;
+
+            placePiece(idx, symbol, colorKey);
+            gameState.board[idx] = activePlayer;
+
+            const winResult = checkWin(gameState.board);
+            if (winResult) {
+                endGame(winResult);
+                return;
+            }
+
+            if (gameState.currentTurn === 'P1') {
+                gameState.currentTurn = 'P2';
+                
+                if (!gameState.isMultiplayer) {
+                    setTimeout(executeAIMove, 450);
+                }
+            } else {
+                gameState.currentTurn = 'P1';
+            }
+        }
+
+        function executeAIMove() {
+            if (gameState.isGameOver) return;
+
+            const bestMove = calculateBestAIMove();
+            if (bestMove !== null && bestMove !== -1) {
+                triggerHaptic(20);
+                placePiece(bestMove, gameState.p2Symbol, gameState.p2Color);
+                gameState.board[bestMove] = 'P2';
+
+                const winResult = checkWin(gameState.board);
+                if (winResult) {
+                    endGame(winResult);
+                    return;
+                }
+
+                gameState.currentTurn = 'P1';
+            }
+        }
+
+        function calculateBestAIMove() {
+            const emptyIndices = gameState.board.map((v, i) => v === null ? i : null).filter(v => v !== null);
+
+            for (let idx of emptyIndices) {
+                const tempBoard = [...gameState.board];
+                tempBoard[idx] = 'P2';
+                const res = checkWin(tempBoard);
+                if (res && res.winner === 'P2') return idx;
+            }
+
+            for (let idx of emptyIndices) {
+                const tempBoard = [...gameState.board];
+                tempBoard[idx] = 'P1';
+                const res = checkWin(tempBoard);
+                if (res && res.winner === 'P1') return idx;
+            }
+
+            if (emptyIndices.includes(4)) return 4;
+            return emptyIndices[Math.floor(Math.random() * emptyIndices.length)];
+        }
+
+        function placePiece(idx, symbol, colorKey) {
+            const cell = cellMeshes[idx];
+            const colorHex = COLOR_HEX[colorKey];
+            const piece = symbol === 'X' ? create3DXPiece(colorHex) : create3DOPiece(colorHex);
+
+            piece.position.x = cell.position.x;
+            piece.position.z = cell.position.z;
+            piece.position.y = 2.0;
+
+            pieceGroup.add(piece);
+
+            if (idx === 4) {
+                androidMascot.visible = false;
+            }
+
+            let start = performance.now();
+            function dropAnim(now) {
+                let elapsed = (now - start) / 1000;
+                if (elapsed < 0.2) {
+                    piece.position.y = THREE.MathUtils.lerp(2.0, 0.2, elapsed / 0.2);
+                    requestAnimationFrame(dropAnim);
+                } else {
+                    piece.position.y = 0.2;
+                }
+            }
+            requestAnimationFrame(dropAnim);
+        }
+
+        function endGame(result) {
+            gameState.isGameOver = true;
+
+            if (result.winner === 'P1') {
+                triggerHaptic([40, 50, 40, 50, 80]);
+                gameState.p1Wins++;
+                p1ScoreEl.textContent = gameState.p1Wins;
+                draw3DWinLine(result.combo);
+
+                setTimeout(() => {
+                    showResultModal("PLAYER 1 WINS!", "Victory claimed on the board.", "var(--android-green)");
+                }, 400);
+            } else if (result.winner === 'P2') {
+                triggerHaptic([30, 40, 30]);
+                const name = gameState.isMultiplayer ? "PLAYER 2" : "COMPUTER";
+                gameState.p2Wins++;
+                p2ScoreEl.textContent = gameState.p2Wins;
+                draw3DWinLine(result.combo);
+
+                setTimeout(() => {
+                    showResultModal(`${name} WINS!`, `${name} took this match.`, "var(--blue-p2)");
+                }, 400);
+            } else {
+                triggerHaptic(50);
+                setTimeout(() => {
+                    showResultModal("MATCH DRAW!", "Neither side could claim victory.", "#f59e0b");
+                }, 400);
+            }
+        }
+
+        function resetMatch() {
+            hideResultModal();
+            gameState.board.fill(null);
+            gameState.isGameOver = false;
+            gameState.currentTurn = 'P1';
+
+            while (pieceGroup.children.length > 0) {
+                const child = pieceGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                pieceGroup.remove(child);
+            }
+
+            if (winLineMesh) {
+                if (winLineMesh.geometry) winLineMesh.geometry.dispose();
+                boardGroup.remove(winLineMesh);
+                winLineMesh = null;
+            }
+
+            androidMascot.visible = true;
+        }
+
+        const raycaster = new THREE.Raycaster();
+        const touchVector = new THREE.Vector2();
+
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        function createRippleEffect(x, y) {
+            const ripple = document.createElement('div');
+            ripple.className = 'touch-ripple';
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            document.body.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 350);
+        }
+
+        window.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length === 0) return;
+
+            const touch = e.changedTouches[0];
+            const deltaX = Math.abs(touch.clientX - touchStartX);
+            const deltaY = Math.abs(touch.clientY - touchStartY);
+
+            if (deltaX > 10 || deltaY > 10) return;
+
+            const tappedElem = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (tappedElem && (tappedElem.closest('.interactive') || tappedElem.closest('#resultModal'))) {
+                return;
+            }
+
+            createRippleEffect(touch.clientX, touch.clientY);
+
+            touchVector.x = (touch.clientX / window.innerWidth) * 2 - 1;
+            touchVector.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(touchVector, camera);
+            const intersects = raycaster.intersectObjects(cellMeshes);
+
+            if (intersects.length > 0) {
+                const clickedIdx = intersects[0].object.userData.index;
+                handleTileTouch(clickedIdx);
+            }
+        }, { passive: true });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        const targetCamPos = new THREE.Vector3();
+        const targetLookAt = new THREE.Vector3(0, 0, 0);
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            if (gameState.isOrbiting) {
+                const orbitRadius = 13.0;
+                const orbitSpeed = 0.0005;
+                const orbitHeight = 9.5;
+
+                targetCamPos.x = Math.sin(time * orbitSpeed) * orbitRadius;
+                targetCamPos.z = Math.cos(time * orbitSpeed) * orbitRadius;
+                targetCamPos.y = orbitHeight;
+                targetLookAt.set(0, -0.5, 0);
+
+                boardGroup.rotation.y = 0;
+            } else {
+                targetCamPos.set(0, 14.5, 0.01);
+                targetLookAt.set(0, 0, 0);
+                boardGroup.rotation.y = THREE.MathUtils.lerp(boardGroup.rotation.y, 0, 0.1);
+            }
+
+            camera.position.lerp(targetCamPos, 0.08);
+            camera.lookAt(targetLookAt);
+
+            if (androidMascot.visible) {
+                androidMascot.rotation.y = Math.sin(time * 0.003) * 0.25;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function() {
+            hideResultModal();
+            animate(0);
+        };
+    </script>
+</body>
+</html>
